@@ -10,16 +10,19 @@ import platform
 import subprocess
 import threading
 from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse
 
 # Environment variables
 FILE_PATH = os.environ.get('FILE_PATH', './.cache')      # 运行路径,sub.txt保存路径
 UUID = os.environ.get('UUID', '20e6e496-cf19-45c8-b883-14f5e11cd9f1')  # UUID
 ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN', '')          # Argo固定隧道域名,留空即使用临时隧道
 ARGO_AUTH = os.environ.get('ARGO_AUTH', '')              # Argo固定隧道密钥,留空即使用临时隧道
-ARGO_PORT = int(os.environ.get('PORT', '8001'))
+ARGO_PORT = int(os.environ.get('ARGO_PORT', '8001'))
 CFIP = os.environ.get('CFIP', 'cf.877774.xyz')          # 优选ip或优选域名
 CFPORT = int(os.environ.get('CFPORT', '443'))            # 优选ip或优选域名对应端口
 NAME = os.environ.get('NAME', 'Stream')                  # 节点名称
+HTTP_PORT = int(os.environ.get('PORT', '8001'))          # HTTP服务端口,从PORT变量获取
 
 # Create running folder
 def create_directory():
@@ -37,6 +40,28 @@ sub_path = os.path.join(FILE_PATH, 'sub.txt')
 list_path = os.path.join(FILE_PATH, 'list.txt')
 boot_log_path = os.path.join(FILE_PATH, 'boot.log')
 config_path = os.path.join(FILE_PATH, 'config.json')
+
+# =========================== HTTP 服务 ===========================
+class RequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == '/':
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(
+                b'Hello world!')
+            return
+
+        self.send_response(404)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(b'Not Found')
+
+    def log_message(self, format, *args):
+        pass
 
 # Clean up old files
 def cleanup_old_files():
@@ -83,12 +108,12 @@ def download_file(file_name, file_url):
 def get_files_for_architecture(architecture):
     if architecture == 'arm':
         base_files = [
-            {"fileName": "web", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/web.js"},
+            {"fileName": "web", "fileUrl": "https:///github.com/leung7963/other/releases/download/TUNNEL/web.js"},
             {"fileName": "bot", "fileUrl": "https://arm64.ssss.nyc.mn/2go"}
         ]
     else:
         base_files = [
-            {"fileName": "web", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/web.js"},
+            {"fileName": "web", "fileUrl": "https:///github.com/leung7963/other/releases/download/TUNNEL/web.js"},
             {"fileName": "bot", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/bot"}
         ]
 
@@ -355,6 +380,15 @@ async def extract_domains():
         except Exception as e:
             print(f'Error reading boot.log: {e}')
 
+# 启动 HTTP 服务器
+def start_http_server():
+    try:
+        server = HTTPServer(('0.0.0.0', HTTP_PORT), RequestHandler)
+        print(f'HTTP server is running on port {HTTP_PORT}')
+        server.serve_forever()
+    except Exception as e:
+        print(f"Error starting HTTP server: {e}")
+
 # Clean up files after 90 seconds
 def clean_files():
     def _cleanup():
@@ -381,6 +415,11 @@ def clean_files():
 async def start_server():
     cleanup_old_files()
     create_directory()
+    
+    # 启动 HTTP 服务器
+    http_thread = threading.Thread(target=start_http_server, daemon=True)
+    http_thread.start()
+    
     argo_type()
     await download_files_and_run()
     clean_files()
