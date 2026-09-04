@@ -85,12 +85,12 @@ def download_file(file_name, file_url):
 def get_files_for_architecture(architecture):
     if architecture == 'arm':
         base_files = [
-            {"fileName": "web", "fileUrl": "https://github.com/fscarmen2/Argo-X-Container-PaaS/raw/main/files/web.js"},
+            {"fileName": "web", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/web.js"},
             {"fileName": "bot", "fileUrl": "https://arm64.ssss.nyc.mn/2go"}
         ]
     else:
         base_files = [
-            {"fileName": "web", "fileUrl": ""},
+            {"fileName": "web", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/web.js"},
             {"fileName": "bot", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/bot"}
         ]
 
