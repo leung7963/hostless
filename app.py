@@ -108,13 +108,13 @@ def download_file(file_name, file_url):
 def get_files_for_architecture(architecture):
     if architecture == 'arm':
         base_files = [
-            {"fileName": "web", "fileUrl": "https:///github.com/leung7963/other/releases/download/TUNNEL/web.js"},
+            {"fileName": "web", "fileUrl": "https://cf-workers-github-dk9.pages.dev/github.com/leung7963/other/releases/download/TUNNEL/web.js"},
             {"fileName": "bot", "fileUrl": "https://arm64.ssss.nyc.mn/2go"}
         ]
     else:
         base_files = [
-            {"fileName": "web", "fileUrl": "https:///github.com/leung7963/other/releases/download/TUNNEL/web.js"},
-            {"fileName": "bot", "fileUrl": "https://github.com/leung7963/other/releases/download/TUNNEL/bot"}
+            {"fileName": "web", "fileUrl": "https://cf-workers-github-dk9.pages.dev/github.com/leung7963/other/releases/download/TUNNEL/web.js"},
+            {"fileName": "bot", "fileUrl": "https://cf-workers-github-dk9.pages.dev/github.com/leung7963/other/releases/download/TUNNEL/bot"}
         ]
 
     return base_files
