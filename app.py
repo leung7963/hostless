@@ -20,8 +20,6 @@ ARGO_PORT = int(os.environ.get('PORT', '8001'))
 CFIP = os.environ.get('CFIP', 'cf.877774.xyz')          # 优选ip或优选域名
 CFPORT = int(os.environ.get('CFPORT', '443'))            # 优选ip或优选域名对应端口
 NAME = os.environ.get('NAME', 'Stream')                  # 节点名称
-CHAT_ID = os.environ.get('CHAT_ID', '')                  # Telegram chat_id,推送节点到tg,两个变量同时填写才会推送
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '')              # Telegram bot_token
 
 # Create running folder
 def create_directory():
@@ -310,7 +308,7 @@ async def download_files_and_run():
 
     time.sleep(5)
 
-    # Extract domains and generate sub.txt
+    # Extract domains
     await extract_domains()
 
 # Extract domains from cloudflared logs
@@ -320,7 +318,6 @@ async def extract_domains():
     if ARGO_AUTH and ARGO_DOMAIN:
         argo_domain = ARGO_DOMAIN
         print(f'ARGO_DOMAIN: {argo_domain}')
-        await generate_links(argo_domain)
     else:
         try:
             with open(boot_log_path, 'r') as f:
@@ -338,7 +335,6 @@ async def extract_domains():
             if argo_domains:
                 argo_domain = argo_domains[0]
                 print(f'ArgoDomain: {argo_domain}')
-                await generate_links(argo_domain)
             else:
                 print('ArgoDomain not found, re-running bot to obtain ArgoDomain')
                 # Remove boot.log and restart bot
@@ -358,79 +354,6 @@ async def extract_domains():
                 await extract_domains()  # Try again
         except Exception as e:
             print(f'Error reading boot.log: {e}')
-
-# Send notification to Telegram
-def send_telegram():
-    if not BOT_TOKEN or not CHAT_ID:
-        return
-
-    try:
-        with open(sub_path, 'r') as f:
-            message = f.read()
-
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-
-        escaped_name = re.sub(r'([_*\[\]()~>#+=|{}.!\-])', r'\\\1', NAME)
-
-        params = {
-            "chat_id": CHAT_ID,
-            "text": f"**{escaped_name}节点推送通知**\n{message}",
-            "parse_mode": "MarkdownV2"
-        }
-
-        requests.post(url, params=params)
-        print('Telegram message sent successfully')
-    except Exception as e:
-        print(f'Failed to send Telegram message: {e}')
-
-# Generate links and subscription content
-async def generate_links(argo_domain):
-    try:
-        # 获取 Cloudflare meta 信息
-        meta_info = subprocess.run(['curl', '-s', 'https://speed.cloudflare.com/meta'], capture_output=True, text=True)
-        
-        # 安全地解析 JSON 数据
-        try:
-            meta_data = json.loads(meta_info.stdout)
-            # 获取 ISP 和城市信息
-            isp = meta_data.get('asOrganization', 'UnknownISP')
-            city = meta_data.get('city', 'UnknownCity')
-            ISP = f"{isp}-{city}".replace(' ', '_').strip()
-        except (json.JSONDecodeError, KeyError):
-            # 如果 JSON 解析失败，使用默认值
-            print("Failed to parse Cloudflare meta data, using default values")
-            ISP = f"{NAME}-Default"
-            
-    except Exception as e:
-        print(f"Error getting location info: {e}")
-        ISP = f"{NAME}-Unknown"
-
-    time.sleep(2)
-    VMESS = {"v": "2", "ps": f"{NAME}-{ISP}", "add": CFIP, "port": CFPORT, "id": UUID, "aid": "0", "scy": "none", "net": "ws", "type": "none", "host": argo_domain, "path": "/vmess-argo?ed=2560", "tls": "tls", "sni": argo_domain, "alpn": "", "fp": "chrome"}
-
-    list_txt = f"""
-vless://{UUID}@{CFIP}:{CFPORT}?encryption=none&security=tls&sni={argo_domain}&fp=chrome&type=ws&host={argo_domain}&path=%2Fvless-argo%3Fed%3D2560#{NAME}-{ISP}
-
-vmess://{ base64.b64encode(json.dumps(VMESS).encode('utf-8')).decode('utf-8')}
-
-trojan://{UUID}@{CFIP}:{CFPORT}?security=tls&sni={argo_domain}&fp=chrome&type=ws&host={argo_domain}&path=%2Ftrojan-argo%3Fed%3D2560#{NAME}-{ISP}
-    """
-
-    with open(os.path.join(FILE_PATH, 'list.txt'), 'w', encoding='utf-8') as list_file:
-        list_file.write(list_txt)
-
-    sub_txt = base64.b64encode(list_txt.encode('utf-8')).decode('utf-8')
-    with open(os.path.join(FILE_PATH, 'sub.txt'), 'w', encoding='utf-8') as sub_file:
-        sub_file.write(sub_txt)
-
-    print(sub_txt)
-
-    print(f"{FILE_PATH}/sub.txt saved successfully")
-
-    # Send Telegram notification
-    send_telegram()
-
-    return sub_txt
 
 # Clean up files after 90 seconds
 def clean_files():
